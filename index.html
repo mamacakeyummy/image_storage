@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Image Manager</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font:14px Arial,sans-serif;color:#202124;background:#f8f9fa}.app{display:flex;height:100vh;overflow:hidden}.side{width:240px;background:#fff;border-right:1px solid #ddd;padding:18px 12px}.logo{font-size:20px;font-weight:600;padding:8px 12px 22px}.new,.btn{border:1px solid #ddd;background:#fff;border-radius:9px;padding:10px 14px;cursor:pointer}.new{width:100%;border-radius:24px;text-align:left;font-size:14px;box-shadow:0 2px 8px #0001}.new:hover,.btn:hover{background:#f1f3f4}.nav{margin-top:18px}.nav button{width:100%;border:0;background:none;text-align:left;padding:11px 14px;border-radius:22px;cursor:pointer}.nav button:hover,.nav .active{background:#e8f0fe;color:#174ea6}.main{flex:1;min-width:0;display:flex;flex-direction:column}.top{height:70px;background:#fff;border-bottom:1px solid #ddd;display:flex;gap:12px;align-items:center;padding:0 22px}.search{max-width:650px;flex:1;border:0;background:#f1f3f4;border-radius:28px;padding:13px 18px;outline:0}.toolbar{display:flex;justify-content:space-between;align-items:center;padding:18px 28px 10px}.title{font-size:20px}.content{padding:10px 28px 30px;overflow:auto}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px}.card{background:#fff;border:1px solid #ddd;border-radius:12px;overflow:hidden;cursor:pointer}.card:hover{box-shadow:0 3px 12px #0002}.thumb{height:145px;background:#f1f3f4;display:flex;align-items:center;justify-content:center}.thumb img{width:100%;height:100%;object-fit:cover}.meta{padding:11px}.name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sub,.small{font-size:12px;color:#5f6368;margin-top:5px}.empty{text-align:center;color:#777;padding:70px}.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;padding:18px;z-index:5}.modal.show{display:flex}.dialog{background:#fff;border-radius:16px;width:min(760px,100%);max-height:92vh;overflow:auto;padding:22px}.dialog h2{margin-top:0}.preview{width:100%;max-height:45vh;object-fit:contain;background:#f1f3f4;border-radius:10px}.field{margin:13px 0}.field label{display:block;font-weight:600;margin-bottom:6px}.field input{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px}.url{display:flex;gap:8px}.url input{flex:1}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.primary{background:#1a73e8;color:#fff;border-color:#1a73e8}.danger{color:#b3261e}.drop{border:2px dashed #bbb;border-radius:12px;padding:35px;text-align:center;background:#fafafa}.drop.drag{border-color:#1a73e8;background:#eef5ff}
+@media(max-width:650px){.side{width:65px}.logo{font-size:0}.logo:after{content:"🖼️";font-size:21px}.nav button{font-size:0;text-align:center}.content{padding:10px 14px}.toolbar{padding:15px}.top{padding:0 12px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side">
+<div class="logo">🖼️ Image Manager</div>
+<button class="new" onclick="uploadDialog()">＋ Upload files</button>
+<div class="nav">
+<button class="active" onclick="setView('grid',this)">🖼️ Images</button>
+<button onclick="setView('list',this)">☷ List</button>
+<button onclick="settings()">⚙️ Settings</button>
+</div>
+<div id="status" class="small" style="margin:20px 12px">Belum terhubung</div>
+</aside>
+<main class="main">
+<header class="top"><input id="search" class="search" placeholder="Search in images..." oninput="render()"><button class="btn" onclick="load()">↻</button></header>
+<div class="toolbar"><div class="title">My Images</div><div><button class="btn" onclick="load()">Refresh</button> <button class="btn primary" onclick="uploadDialog()">＋ Upload</button></div></div>
+<section class="content"><div id="grid" class="grid"></div><div id="list"></div></section>
+</main></div>
+<div id="modal" class="modal"><div id="dialog" class="dialog"></div></div>
+
+<script>
+const KEY='imageManagerConfig',S={files:[],view:'grid'};
+const exts=['jpg','jpeg','png','gif','webp','svg','avif'];
+const cfg=()=>JSON.parse(localStorage.getItem(KEY)||'{}');
+const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const q=s=>String(s).replace(/\/g,'\\').replace(/'/g,"\\'");
+function modal(x){dialog.innerHTML=x;modalEl().classList.add('show')}function close(){modalEl().classList.remove('show')}function modalEl(){return document.getElementById('modal')}
+function settings(){let c=cfg();modal(`<h2>⚙️ Settings</h2>
+<div class="field"><label>GitHub username</label><input id="u" value="${esc(c.user||'')}"></div>
+<div class="field"><label>Repository</label><input id="r" value="${esc(c.repo||'add_image')}"></div>
+<div class="field"><label>Branch</label><input id="b" value="${esc(c.branch||'main')}"></div>
+<div class="field"><label>Fine-grained Personal Access Token</label><input id="t" type="password" value="${esc(c.token||'')}"></div>
+<p class="small">Gunakan token yang hanya punya akses Contents: Read and write untuk repository ini. Token disimpan di browser ini, bukan di source code.</p>
+<div class="actions"><button class="btn" onclick="close()">Cancel</button><button class="btn primary" onclick="saveSettings()">Save & Connect</button></div>`)}
+function saveSettings(){let c={user:u.value.trim(),repo:r.value.trim(),branch:b.value.trim()||'main',token:t.value.trim()};if(!c.user||!c.repo||!c.token)return alert('Semua field wajib diisi.');localStorage.setItem(KEY,JSON.stringify(c));close();load()}
+function headers(){return {'Accept':'application/vnd.github+json','Authorization':'Bearer '+cfg().token,'X-GitHub-Api-Version':'2022-11-28'}}
+function api(path,opt={}){return fetch('https://api.github.com'+path,{...opt,headers:{...headers(),...(opt.headers||{})}})}
+function raw(path){let c=cfg();return `https://raw.githubusercontent.com/${c.user}/${c.repo}/${c.branch}/${path.split('/').map(encodeURIComponent).join('/')}`}
+async function load(){let c=cfg();if(!c.user||!c.repo||!c.token){status.textContent='⚙️ Atur GitHub di Settings';render();return}status.textContent='Loading…';try{let r=await api(`/repos/${encodeURIComponent(c.user)}/${encodeURIComponent(c.repo)}/git/trees/${encodeURIComponent(c.branch)}?recursive=1`),j=await r.json();if(!r.ok)throw Error(j.message);S.files=(j.tree||[]).filter(x=>x.type==='blob'&&exts.includes((x.path.split('.').pop()||'').toLowerCase()));status.textContent=S.files.length+' image(s)';render()}catch(e){status.textContent='Connection error';alert('GitHub error: '+e.message)}}
+function render(){let q=search.value.toLowerCase(),fs=S.files.filter(x=>x.path.toLowerCase().includes(q));grid.style.display=S.view==='grid'?'grid':'none';document.getElementById('list').style.display=S.view==='list'?'block':'none';if(!fs.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Tidak ada gambar.</div>';return}grid.innerHTML=fs.map(f=>`<div class="card" onclick="preview('${q(f.path)}')"><div class="thumb"><img src="${raw(f.path)}" loading="lazy"></div><div class="meta"><div class="name">${esc(f.path.split('/').pop())}</div><div class="sub">${esc(f.path)}</div></div></div>`).join('');document.getElementById('list').innerHTML=fs.map(f=>`<div style="display:grid;grid-template-columns:1fr 140px 90px;padding:12px;background:#fff;border-bottom:1px solid #ddd;gap:10px"><div>${esc(f.path)}</div><div>${f.size} B</div><button class="btn" onclick="preview('${q(f.path)}')">Open</button></div>`).join('')}
+function setView(v,b){S.view=v;document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');render()}
+function preview(path){let u=raw(path),n=path.split('/').pop(),html=`<h2>${esc(n)}</h2><img class="preview" src="${u}"><div class="field"><label>Direct Image URL</label><div class="url"><input readonly value="${esc(u)}"><button class="btn primary" onclick="copy('${q(u)}')">Copy</button></div></div><div class="field"><label>HTML</label><div class="url"><input readonly value='${esc(`<img src="${u}" alt="${n}">`)}'><button class="btn" onclick="copy('${q(`<img src="${u}" alt="${n}">`)}')">Copy</button></div></div><div class="field"><label>Markdown</label><div class="url"><input readonly value='${esc(`![${n}](${u})`)}'><button class="btn" onclick="copy('${q(`![${n}](${u})`)}')">Copy</button></div></div><div class="actions"><button class="btn" onclick="window.open('${q(u)}','_blank')">Open URL</button><button class="btn danger" onclick="del('${q(path)}')">Delete</button><button class="btn" onclick="close()">Close</button></div>`;modal(html)}
+function uploadDialog(){modal(`<h2>＋ Upload images</h2><div id="drop" class="drop">Drop images here<br><br><button class="btn" onclick="picker.click()">Choose files</button><input id="picker" type="file" accept="image/*" multiple hidden onchange="upload(this.files)"></div><div class="field"><label>Folder (optional)</label><input id="folder" placeholder="products"></div><p id="upstatus" class="small"></p>`);drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag')};drop.ondragleave=()=>drop.classList.remove('drag');drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');upload(e.dataTransfer.files)}}
+function b64(file){return new Promise((res,rej)=>{let r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file)})}
+async function upload(files){let c=cfg();if(!c.token)return alert('Atur GitHub di Settings dulu.');let folder=(document.getElementById('folder')?.value||'').replace(/^\/+|\/+$/g,''),i=0;for(let f of files){if(!exts.includes((f.name.split('.').pop()||'').toLowerCase()))continue;upstatus.textContent=`Uploading ${++i}/${files.length}: ${f.name}`;try{let path=(folder?folder+'/':'')+f.name,old=await api(`/repos/${c.user}/${c.repo}/contents/${path}?ref=${encodeURIComponent(c.branch)}`),sha=null;if(old.ok)sha=(await old.json()).sha;let body={message:'Upload '+f.name,content:await b64(f),branch:c.branch};if(sha)body.sha=sha;let r=await api(`/repos/${c.user}/${c.repo}/contents/${path}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),j=await r.json();if(!r.ok)throw Error(j.message)}catch(e){alert('Gagal '+f.name+': '+e.message)}}await load();close()}
+async function del(path){if(!confirm('Hapus file dari GitHub?'))return;let c=cfg();try{let x=await api(`/repos/${c.user}/${c.repo}/contents/${path}?ref=${encodeURIComponent(c.branch)}`),j=await x.json();if(!x.ok)throw Error(j.message);let r=await api(`/repos/${c.user}/${c.repo}/contents/${path}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:'Delete '+path,sha:j.sha,branch:c.branch})}),z=await r.json();if(!r.ok)throw Error(z.message);close();load()}catch(e){alert(e.message)}}
+async function copy(x){try{await navigator.clipboard.writeText(x);alert('URL copied!')}catch(e){prompt('Copy:',x)}}
+modalEl().onclick=e=>{if(e.target===modalEl())close()};render();load();
+</script>
+</body>
+</html>
